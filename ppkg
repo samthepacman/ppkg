@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+
+USAGE=$(cat <<ENDSTR
+Usage: ${0/\.\//} <command> [arguments]
+COMMANDS :
+APT COMMANDS:
+install   - Install packages
+remove    - Remove packages
+update 	  - Sync with the Pop/Ubuntu/Debian Repositories
+upgrade   - Upgrade all packages
+locate    - Find the package which provides FILE
+search 	  - Search for packages in the repository
+info 	  - Print information about a package
+list 	  - List the files installed with a package
+version:  - Gives the version number of a package(s) by name
+		
+FLATPAK COMMANDS:
+finstall  - Install flatpaks
+fupgrade  - Upgrade all flatpak
+flist     - List all installed flatpaks
+fdelete   - Remove flatpaks
+fpurge    - Remove all unused flatpaks
+
+APT-MANAGE COMMANDS:
+add-repo  - Add a repo
+list-repo - List all added repositories
+mod-repo  - Modify added repository
+rm-repo   - Remove added repodiory
+ENDSTR
+)
+
+sudo=$(which sudo 2> /dev/null|cut -d ':' -f 2)
+if [ $(id -u) -eq 0 ]; then sudo=""; fi
+
+command="$1"
+shift
+case "$command" in
+
+	help|--help)
+        	echo $VERSION
+		echo "$USAGE"
+		;;
+
+#...........................................
+	install) 
+		$sudo apt-get install "$@" 
+		;;
+	remove) 
+		$sudo apt-get remove  "$@" 
+		;;
+        update)
+                $sudo apt-get update
+		;;
+	upgrade)
+                $sudo apt-get -u upgrade
+		;;
+	search)
+		apt-cache search  "$@"
+		;;
+	locate|belong)
+                for i in $(whereis $1|cut -d ':' -f 2); do if [ ! -z $(echo $i|grep -v .gz|grep -v man) ];then  dpkg -S $i 2> /dev/null; fi;  done
+		;;
+	info)
+		apt-cache policy "$@"
+		;;
+	list|files)
+		dpkg -L "$@"
+		;;
+    	version)
+		apt-cache policy "$@" | grep Installed
+        	;;
+	finstall)
+		flatpak install "$@"
+		;;
+	fupgrade)
+		flatpak update
+		;;
+	fdelete)
+		flatpak remove "$@"
+		;;
+	flist)
+		flatpak list
+		;;
+	fpurge)
+		flatpak uninstall --unused
+		;;
+	add-repo)
+		apt-manage add "$@"
+		;;
+	rm-repo)
+		apt-manage remove "$@"
+		;;
+	list-repo)
+		apt-manage list
+		;;
+	mod-repo)
+		apt-manage modify "$@"
+		;;
+#...........................................
+	*)
+		[ -z $command ] || echo Unknown command: $command
+		echo "$USAGE"
+		;;
+esac
